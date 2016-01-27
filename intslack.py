@@ -100,6 +100,7 @@ def user_info(id):
         else:
             info['company'] = ("<https://app.intercom.io/a/apps/" + appid + "/companies/" +
                                company['id'] + "|" + companies[:-1] + ">")
+        info['custom_attributes'] = u['custom_attributes']
         return info
     except:
         failmail(email, 'Failure on processing Intercom user info:\n' + traceback.format_exc())
@@ -118,113 +119,13 @@ def clean_up(body):
        return ""
 
 def intercom_parse(notification):
-
     try:
-        if notification['topic'] == 'conversation.admin.replied':
-            for part in notification['data']['item']['conversation_parts']['conversation_parts']:
-                part['body'] = clean_up(part['body'])
-                uinfo = user_info(notification['data']['item']['user']['id'])
-                if uinfo:
-                    message = (part['author']['name'] + " replied to <" +
-                    notification['data']['item']['links']['conversation_web'] + "|a conversation> with " +
-                        uinfo['name'] + " (" +
-                        uinfo['company'] + ")\n" +
-                        part['body'])
-                    return({"text": message, "color": "ffce49"})
-                else:
-                    return None
-    
-        elif notification['topic'] == 'conversation.user.replied':
-            for part in notification['data']['item']['conversation_parts']['conversation_parts']:
-                part['body'] = clean_up(part['body'])
-                uinfo = user_info(part['author']['id'])
-                if uinfo:
-                    message = (uinfo['name'] + " (" +
-                        uinfo['company'] + ") replied to <" + 
-                        notification['data']['item']['links']['conversation_web'] + "|a conversation> with " +
-                        notification['data']['item']['assignee']['name'] + '\n' +
-                        part['body'])
-                    return({"text": message, "color": "1414ff"})
-                else:
-                    return None
-
-        elif notification['topic'] in [ 'conversation.admin.opened', 'conversation.admin.closed' ]:
-            operation = string.split(notification['topic'], '.')[2]
-            for part in notification['data']['item']['conversation_parts']['conversation_parts']:
-                part['body'] = clean_up(part['body'])
-                uinfo = user_info(notification['data']['item']['user']['id'])
-                if uinfo:
-                    message = (part['author']['name'] + " " + operation + " <" +
-                    notification['data']['item']['links']['conversation_web'] + "|a conversation> with " +
-                        uinfo['name'] + " (" +
-                        uinfo['company'] + ")\n" +
-                        part['body'])
-                    return({"text": message, "color": "ffce49"})
-                else:
-                    return None
-
-        elif notification['topic'] == 'conversation.admin.closed':
-            for part in notification['data']['item']['conversation_parts']['conversation_parts']:
-                part['body'] = clean_up(part['body'])
-                uinfo = user_info(notification['data']['item']['user']['id'])
-                if uinfo:
-                    message = (part['author']['name'] + " closed <" +
-                    notification['data']['item']['links']['conversation_web'] + "|a conversation> with " +
-                        uinfo['name'] + " (" +
-                        uinfo['company'] + ")\n" +
-                        part['body'])
-                    return({"text": message, "color": "ffce49"})
-                else:
-                    return None
-
-        elif notification['topic'] == 'conversation.admin.assigned':
-            for part in notification['data']['item']['conversation_parts']['conversation_parts']:
-                part['body'] = clean_up(part['body'])
-                uinfo = user_info(notification['data']['item']['user']['id'])
-                if uinfo:
-                    message = (part['author']['name'] + " assigned <" +
-                    notification['data']['item']['links']['conversation_web'] + "|a conversation> with " +
-                        uinfo['name'] + " (" +
-                        uinfo['company'] +
-                        ") to " + part['assigned_to']['name'] + "\n" +
-                        part['body'])
-                    return({"text": message, "color": "ffce49"})
-                else:
-                    return None
-
-        elif notification['topic'] == 'conversation.user.created':
-            part = notification['data']['item']['conversation_message']
-            part['body'] = clean_up(part['body'])
-            uinfo = user_info(part['author']['id'])
-            if uinfo:
-                message = (uinfo['name'] + " (" +
-                    uinfo['company'] + ") started a new <" +
-                    notification['data']['item']['links']['conversation_web'] + "|conversation> with " +
-                    notification['data']['item']['assignee']['name'] + '\n' +
-                    part['body'])
-                return({"text": message, "color": "1414ff"})
-            else:
-                return None
-
-        elif notification['topic'] == 'conversation.admin.noted':
-            for part in notification['data']['item']['conversation_parts']['conversation_parts']:
-                part['body'] = clean_up(part['body'])
-                uinfo = user_info(notification['data']['item']['user']['id'])
-                if uinfo:
-                    message = (part['author']['name'] + " added <" +
-                        notification['data']['item']['links']['conversation_web'] + "|an internal note> to <" +
-                        notification['data']['item']['links']['conversation_web'] + "|a conversation> with " +
-                        uinfo['name'] + " (" +
-                        uinfo['company'] + ")\n" +
-                        part['body'])
-                    return({"text": message, "color": "ffce49"})
-                else:
-                    return None
-
-        else:
-            failmail(email, 'Received an unsupported Intercom notification type:\n' + notification['topic'])
-            return None
-
+        uinfo = user_info(notification['data']['item']['user']['id'])
+        message = ("New User Added:\n" +
+                    uinfo['name'] + " from " +
+                    uinfo['custom_attributes']['practice'] + " in " +
+                    uinfo['custom_attributes']['state'])
+        return({"text": message, "color": "ffce49"})
     except:
         failmail(email, 'Failure parsing Intercom notification:\n' + traceback.format_exc())
         return None
@@ -246,6 +147,7 @@ def slacksend_channel(message, channel_name):
         args = copy.deepcopy(slackauth)
         args['channel'] = channel['channel']['id']
         args['username'] = 'Intercom'
+        args['icon_emoji'] = ':robot_face:'
 
         # If the message is too big, Slack will send us a response code 414. Keep chopping the message in
         # half until it goes through.
